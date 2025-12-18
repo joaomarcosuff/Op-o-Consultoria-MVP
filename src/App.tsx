@@ -1,78 +1,14 @@
 import React, { useState, useEffect } from 'react';
+import { onAuthStateChanged, signOut, User as FirebaseUser } from 'firebase/auth';
+import { doc, getDoc, setDoc, onSnapshot, collection, query, where } from 'firebase/firestore';
+import { auth, db } from './firebase';
 import { LoginView } from './views/LoginView';
 import { HomeView } from './views/HomeView';
 import { CommercialView } from './views/CommercialView';
 import { ProjectsView } from './views/ProjectsView';
 import { DashboardView } from './views/DashboardView';
-import { LayoutDashboard, PieChart, Briefcase, Menu, LogOut, Settings, ClipboardList } from 'lucide-react';
+import { LayoutDashboard, PieChart, Briefcase, Menu, LogOut, Settings, ClipboardList, Loader2 } from 'lucide-react';
 import { Project, Lead, Task } from './types';
-
-// Mock Data Initialization
-const MOCK_PROJECTS: Project[] = [
-    {
-        id: '1', title: 'Expansão Nacional Varejo', client: 'Grupo ABC', status: 'execution', startDate: '2023-01-15',
-        financialData: { 
-            initialInvestment: 500000, 
-            investmentBreakdown: { reform: 200000, furniture: 100000, equipment: 100000, marketing: 50000, legal: 20000, workingCapital: 30000 },
-            monthlyRevenue: 120000, monthlyCost: 80000, annualGrowthRate: 10, taxRate: 15, discountRate: 12 
-        },
-        marketingData: { 
-          description: 'Varejo de moda', 
-          swot: { strengths: [], weaknesses: [], opportunities: [], threats: [] }, 
-          mix: { product: '', price: '', place: '', promotion: '' }, 
-          funnel: { top: '', middle: '', bottom: '' },
-          actionPlan: [] 
-        },
-        sectorData: { 
-          overview: 'Setor em crescimento...', 
-          trends: 'Omnichannel', 
-          porter: { rivalry: '', supplierPower: '', buyerPower: '', threatNewEntrants: '', threatSubstitutes: '' } 
-        },
-        supplyData: { competitors: [], suppliers: [] },
-        marketResearch: { surveyLink: '', targetAudience: '', persona: '', dataAnalysis: '' },
-        organizationData: { mission: '', vision: '', values: '', taxRegime: 'Simples Nacional', cnae: '', roles: [] },
-        operationalData: { layout: '', capacity: '', processes: '', logistics: '' },
-        timelineData: { tasks: [] }
-    },
-    {
-        id: '2', title: 'Reestruturação RH', client: 'TechSoft', status: 'planning', startDate: '2023-11-01',
-        financialData: { 
-            initialInvestment: 50000, 
-            investmentBreakdown: { reform: 0, furniture: 10000, equipment: 20000, marketing: 0, legal: 10000, workingCapital: 10000 },
-            monthlyRevenue: 0, monthlyCost: 0, annualGrowthRate: 0, taxRate: 0, discountRate: 10 
-        },
-        marketingData: { 
-          description: '', 
-          swot: { strengths: [], weaknesses: [], opportunities: [], threats: [] }, 
-          mix: { product: '', price: '', place: '', promotion: '' }, 
-          funnel: { top: '', middle: '', bottom: '' },
-          actionPlan: [] 
-        },
-        sectorData: { 
-          overview: '', 
-          trends: '', 
-          porter: { rivalry: '', supplierPower: '', buyerPower: '', threatNewEntrants: '', threatSubstitutes: '' } 
-        },
-        supplyData: { competitors: [], suppliers: [] },
-        marketResearch: { surveyLink: '', targetAudience: '', persona: '', dataAnalysis: '' },
-        organizationData: { mission: '', vision: '', values: '', taxRegime: 'Lucro Presumido', cnae: '', roles: [] },
-        operationalData: { layout: '', capacity: '', processes: '', logistics: '' },
-        timelineData: { tasks: [] }
-    }
-];
-
-const MOCK_TASKS: Task[] = [
-    { id: '1', title: 'Validar premissas financeiras', type: 'project', priority: 'high', status: 'doing', assignee: 'Eu', dueDate: '2023-10-25', projectId: '1' },
-    { id: '2', title: 'Treinamento de Compliance', type: 'training', priority: 'medium', status: 'todo', assignee: 'Eu', dueDate: '2023-12-01' },
-    { id: '3', title: 'Pagar fornecedores', type: 'general', priority: 'high', status: 'done', assignee: 'Financeiro', dueDate: '2023-10-20' },
-    { id: '4', title: 'Reunião de Kickoff', type: 'project', priority: 'medium', status: 'todo', assignee: 'João', dueDate: '2023-11-05', projectId: '2' },
-    { id: '5', title: 'Atualizar CRM', type: 'general', priority: 'low', status: 'todo', assignee: 'Eu', dueDate: '2023-11-10' },
-];
-
-const MOCK_LEADS: Lead[] = [
-    { id: '1', name: 'Mario Silva', company: 'Construtora Silva', email: 'mario@silva.com', phone: '11 99999-9999', value: 45000, probability: 60, status: 'meeting', lastContact: '2023-10-22', history: [] },
-    { id: '2', name: 'Ana Costa', company: 'Inovação LTDA', email: 'ana@inovacao.com', phone: '11 88888-8888', value: 12000, probability: 30, status: 'prospect', lastContact: '2023-10-20', history: [] },
-];
 
 const SidebarItem = ({ icon: Icon, label, active, onClick }: any) => (
   <button
@@ -87,33 +23,72 @@ const SidebarItem = ({ icon: Icon, label, active, onClick }: any) => (
 );
 
 const App = () => {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [user, setUser] = useState<FirebaseUser | null>(null);
+  const [loading, setLoading] = useState(true);
   const [currentView, setCurrentView] = useState<'home' | 'commercial' | 'projects' | 'dashboard'>('home');
   const [isSidebarOpen, setSidebarOpen] = useState(true);
   
-  // Global State
-  const [projects, setProjects] = useState<Project[]>(MOCK_PROJECTS);
-  const [tasks, setTasks] = useState<Task[]>(MOCK_TASKS);
-  const [leads, setLeads] = useState<Lead[]>(MOCK_LEADS);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [leads, setLeads] = useState<Lead[]>([]);
 
-  // Responsive Sidebar
+  // 1. Monitorar estado de Autenticação
   useEffect(() => {
-    const handleResize = () => {
-        if (window.innerWidth < 768) setSidebarOpen(false);
-        else setSidebarOpen(true);
-    };
-    window.addEventListener('resize', handleResize);
-    handleResize();
-    return () => window.removeEventListener('resize', handleResize);
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+      setLoading(false);
+    });
+    return () => unsubscribe();
   }, []);
 
-  const handleUpdateProject = (updatedProject: Project) => {
-      setProjects(projects.map(p => p.id === updatedProject.id ? updatedProject : p));
+  // 2. Monitorar e Sincronizar Dados do Firestore quando logado
+  useEffect(() => {
+    if (!user) {
+        setProjects([]);
+        setLeads([]);
+        setTasks([]);
+        return;
+    }
+
+    // Listener para Projetos
+    const qProjects = query(collection(db, "projects"), where("userId", "==", user.uid));
+    const unsubProjects = onSnapshot(qProjects, (snapshot) => {
+        const loadedProjects = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Project));
+        setProjects(loadedProjects);
+    });
+
+    // Listener para Leads
+    const qLeads = query(collection(db, "leads"), where("userId", "==", user.uid));
+    const unsubLeads = onSnapshot(qLeads, (snapshot) => {
+        const loadedLeads = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Lead));
+        setLeads(loadedLeads);
+    });
+
+    // Listener para Tarefas
+    const qTasks = query(collection(db, "tasks"), where("userId", "==", user.uid));
+    const unsubTasks = onSnapshot(qTasks, (snapshot) => {
+        const loadedTasks = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Task));
+        setTasks(loadedTasks);
+    });
+
+    return () => {
+        unsubProjects();
+        unsubLeads();
+        unsubTasks();
+    };
+  }, [user]);
+
+  // Funções de Update Sincronizadas com Firestore
+  const handleUpdateProject = async (updatedProject: Project) => {
+      if (!user) return;
+      await setDoc(doc(db, "projects", updatedProject.id), { ...updatedProject, userId: user.uid });
   };
 
-  const handleCreateProject = () => {
+  const handleCreateProject = async () => {
+      if (!user) return;
+      const id = Date.now().toString();
       const newProject: Project = {
-          id: Date.now().toString(),
+          id,
           title: 'Novo Projeto',
           client: 'Cliente',
           status: 'planning',
@@ -130,36 +105,52 @@ const App = () => {
             funnel: { top: '', middle: '', bottom: '' },
             actionPlan: [] 
           },
-          sectorData: { 
-            overview: '', 
-            trends: '', 
-            porter: { rivalry: '', supplierPower: '', buyerPower: '', threatNewEntrants: '', threatSubstitutes: '' } 
-          },
+          sectorData: { overview: '', trends: '', porter: { rivalry: '', supplierPower: '', buyerPower: '', threatNewEntrants: '', threatSubstitutes: '' } },
           supplyData: { competitors: [], suppliers: [] },
           marketResearch: { surveyLink: '', targetAudience: '', persona: '', dataAnalysis: '' },
           organizationData: { mission: '', vision: '', values: '', taxRegime: 'Simples Nacional', cnae: '', roles: [] },
           operationalData: { layout: '', capacity: '', processes: '', logistics: '' },
           timelineData: { tasks: [] }
       };
-      setProjects([...projects, newProject]);
+      await setDoc(doc(db, "projects", id), { ...newProject, userId: user.uid });
   };
 
-  const handleUpdateTask = (taskId: string, status: Task['status']) => {
-      setTasks(tasks.map(t => t.id === taskId ? { ...t, status } : t));
+  const handleUpdateLead = async (lead: Lead) => {
+    if (!user) return;
+    await setDoc(doc(db, "leads", lead.id), { ...lead, userId: user.uid });
   };
 
-  if (!isAuthenticated) {
-    return <LoginView onLogin={() => setIsAuthenticated(true)} />;
+  const handleAddLead = async (lead: Lead) => {
+    if (!user) return;
+    await setDoc(doc(db, "leads", lead.id), { ...lead, userId: user.uid });
+  };
+
+  const handleUpdateTask = async (taskId: string, status: Task['status']) => {
+      if (!user) return;
+      const task = tasks.find(t => t.id === taskId);
+      if (task) {
+        await setDoc(doc(db, "tasks", taskId), { ...task, status, userId: user.uid });
+      }
+  };
+
+  if (loading) {
+      return (
+          <div className="h-screen flex items-center justify-center bg-[#d9d9d9]">
+              <Loader2 className="animate-spin text-[#0b0b45]" size={48} />
+          </div>
+      );
+  }
+
+  if (!user) {
+    return <LoginView />;
   }
 
   return (
     <div className="flex h-screen bg-[#d9d9d9] font-sans overflow-hidden">
-      {/* Mobile Overlay */}
       {isSidebarOpen && window.innerWidth < 768 && (
           <div className="fixed inset-0 bg-black/50 z-10" onClick={() => setSidebarOpen(false)}></div>
       )}
 
-      {/* Sidebar */}
       <aside className={`fixed md:relative w-64 bg-[#0b0b45] text-white flex flex-col shadow-xl z-20 h-full transition-transform duration-300 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0 md:w-0 md:hidden'}`}>
         <div className="p-6 border-b border-white/10 flex justify-between items-center">
           <div className="flex items-center gap-3">
@@ -179,7 +170,7 @@ const App = () => {
 
         <div className="p-4 border-t border-white/10">
           <button 
-            onClick={() => setIsAuthenticated(false)}
+            onClick={() => signOut(auth)}
             className="flex items-center space-x-2 text-gray-300 hover:text-[#ff9933] w-full px-4 py-2 transition-colors"
           >
             <LogOut size={18} />
@@ -188,7 +179,6 @@ const App = () => {
         </div>
       </aside>
 
-      {/* Main Content */}
       <main className="flex-1 overflow-hidden flex flex-col relative w-full">
         <header className="bg-white shadow-sm border-b h-16 flex items-center px-6 justify-between z-10 shrink-0">
             <div className="flex items-center gap-4">
@@ -203,15 +193,16 @@ const App = () => {
                 </h2>
             </div>
             <div className="flex items-center gap-3">
-                <span className="text-sm text-gray-500 hidden md:inline">Olá, Consultor Sênior</span>
+                <span className="text-sm text-gray-500 hidden md:inline">Logado como: {user.email || 'Demo'}</span>
                 <div className="w-8 h-8 bg-[#0b0b45] rounded-full flex items-center justify-center text-white font-bold">
-                    CS
+                    {user.email ? user.email[0].toUpperCase() : 'D'}
                 </div>
             </div>
         </header>
         <div className="flex-1 overflow-auto p-6 bg-[#d9d9d9]">
           {currentView === 'home' && <HomeView projects={projects} tasks={tasks} leads={leads} onNavigate={setCurrentView} />}
-          {currentView === 'commercial' && <CommercialView leads={leads} onAddLead={(l) => setLeads([...leads, l])} onUpdateLead={(l) => setLeads(leads.map(x => x.id === l.id ? l : x))} />}
+          {/* Fix: Use correct prop names for CommercialView as defined in its interface */}
+          {currentView === 'commercial' && <CommercialView leads={leads} onAddLead={handleAddLead} onUpdateLead={handleUpdateLead} />}
           {currentView === 'projects' && <ProjectsView projects={projects} onUpdateProject={handleUpdateProject} onCreateProject={handleCreateProject} />}
           {currentView === 'dashboard' && <DashboardView tasks={tasks} onUpdateTask={handleUpdateTask} />}
         </div>

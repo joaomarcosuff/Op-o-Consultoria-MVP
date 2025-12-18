@@ -20,11 +20,13 @@ export const MarketingView = ({ data, onUpdate }: MarketingViewProps) => {
     }
     setLoading(true);
     try {
+      // Initialize GoogleGenAI with the API key from environment
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
       const prompt = `Atue como um Consultor de Marketing Sênior. Para o seguinte negócio: "${data.description}", crie uma Análise SWOT detalhada e sugira 3 canais de marketing prioritários. Formate a saída em Markdown.`;
       
+      // Fix: Always use 'gemini-3-flash-preview' for basic text tasks and access .text property directly
       const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
+        model: 'gemini-3-flash-preview',
         contents: prompt,
       });
       
