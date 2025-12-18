@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { Card, Button, Input } from '../components/Shared';
+import { Card, Button, Input } from './Shared';
 import { User, PlayCircle, Loader2 } from 'lucide-react';
 import { signInWithEmailAndPassword, signInAnonymously, OAuthProvider, signInWithPopup } from 'firebase/auth';
-import { auth } from '../firebase';
+import { auth } from './firebase';
 
 export const LoginView = () => {
   const [email, setEmail] = useState('');
@@ -29,8 +29,6 @@ export const LoginView = () => {
     setError('');
     try {
       const provider = new OAuthProvider('microsoft.com');
-      // Opcional: restringir a um tenant específico se necessário
-      // provider.setCustomParameters({ tenant: 'SEU_TENANT_ID' });
       await signInWithPopup(auth, provider);
     } catch (err: any) {
       setError('Erro ao autenticar com a Microsoft. Verifique se os pop-ups estão permitidos.');

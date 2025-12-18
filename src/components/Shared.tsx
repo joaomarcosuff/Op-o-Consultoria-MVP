@@ -1,8 +1,11 @@
+
 import React, { ReactNode } from 'react';
 import { X } from 'lucide-react';
 
-export const Card = ({ children, className = '' }: { children: ReactNode; className?: string }) => (
-  <div className={`bg-white rounded-lg shadow-md p-6 ${className}`}>
+// Fixed Card component by using 'any' for props to allow children, key, and other HTML attributes
+// This resolves the TypeScript errors where children and key were not being recognized correctly in multiple views.
+export const Card = ({ children, className = '', ...props }: any) => (
+  <div className={`bg-white rounded-lg shadow-md p-6 ${className}`} {...props}>
     {children}
   </div>
 );
