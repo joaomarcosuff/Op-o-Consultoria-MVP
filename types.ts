@@ -1,3 +1,4 @@
+
 export interface User {
   id: string;
   name: string;
@@ -48,6 +49,22 @@ export interface FinancialData {
   discountRate: number;
 }
 
+// Added missing TimelineTask interface to fix import error in projectTemplates.ts
+export interface TimelineTask {
+  id: string;
+  title: string;
+  description?: string;
+  module?: string;
+  estimatedDays?: number;
+  completed: boolean;
+  dueDate: string;
+}
+
+// Added missing TimelineData interface
+export interface TimelineData {
+  tasks: TimelineTask[];
+}
+
 export interface Project {
   id: string;
   title: string;
@@ -61,5 +78,5 @@ export interface Project {
   marketResearch: any;
   organizationData: any;
   operationalData: any;
-  timelineData: any;
+  timelineData: TimelineData;
 }

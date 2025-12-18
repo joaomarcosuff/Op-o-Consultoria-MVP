@@ -61,56 +61,20 @@ export const LoginView = () => {
         </div>
         
         <form onSubmit={handleLogin}>
-          <Input 
-            label="Email Corporativo" 
-            value={email} 
-            onChange={(e: any) => setEmail(e.target.value)} 
-            placeholder="usuario@exemplo.com" 
-          />
-          <Input 
-            label="Senha" 
-            type="password" 
-            value={password} 
-            onChange={(e: any) => setPassword(e.target.value)} 
-          />
-          
+          <Input label="Email Corporativo" value={email} onChange={(e: any) => setEmail(e.target.value)} placeholder="usuario@exemplo.com" />
+          <Input label="Senha" type="password" value={password} onChange={(e: any) => setPassword(e.target.value)} />
           {error && <p className="text-red-500 text-xs mb-4 text-center">{error}</p>}
-          
           <div className="space-y-3 mt-6">
             <Button variant="primary" className="w-full" disabled={loading} onClick={handleLogin}>
                 {loading ? <Loader2 className="animate-spin" size={18} /> : 'Entrar no Sistema'}
             </Button>
-            
-            <button 
-              type="button"
-              onClick={handleMicrosoftLogin}
-              disabled={loading}
-              className="w-full flex items-center justify-center gap-3 px-4 py-2 border border-gray-300 rounded bg-white hover:bg-gray-50 transition-colors text-gray-700 font-medium"
-            >
+            <button type="button" onClick={handleMicrosoftLogin} disabled={loading} className="w-full flex items-center justify-center gap-3 px-4 py-2 border border-gray-300 rounded bg-white hover:bg-gray-50 transition-colors text-gray-700 font-medium">
               {loading ? <Loader2 className="animate-spin" size={18} /> : (
-                <>
-                  <svg className="w-5 h-5" viewBox="0 0 23 23" xmlns="http://www.w3.org/2000/svg">
-                    <path fill="#f3f3f3" d="M0 0h23v23H0z"/>
-                    <path fill="#f25022" d="M1 1h10v10H1z"/>
-                    <path fill="#7fba00" d="M12 1h10v10H12z"/>
-                    <path fill="#00a4ef" d="M1 12h10v10H1z"/>
-                    <path fill="#ffb900" d="M12 12h10v10H12z"/>
-                  </svg>
-                  Login com Microsoft
-                </>
+                <><svg className="w-5 h-5" viewBox="0 0 23 23" xmlns="http://www.w3.org/2000/svg"><path fill="#f3f3f3" d="M0 0h23v23H0z"/><path fill="#f25022" d="M1 1h10v10H1z"/><path fill="#7fba00" d="M12 1h10v10H12z"/><path fill="#00a4ef" d="M1 12h10v10H1z"/><path fill="#ffb900" d="M12 12h10v10H12z"/></svg> Login com Microsoft</>
               )}
             </button>
-            
-            <div className="relative flex items-center py-2">
-                <div className="flex-grow border-t border-gray-300"></div>
-                <span className="flex-shrink-0 mx-4 text-gray-400 text-xs uppercase">ou</span>
-                <div className="flex-grow border-t border-gray-300"></div>
-            </div>
-
-            <Button variant="outline" className="w-full" onClick={handleDemo} type="button" disabled={loading}>
-               <PlayCircle size={18} />
-               Modo Demonstração (Anônimo)
-            </Button>
+            <div className="relative flex items-center py-2"><div className="flex-grow border-t border-gray-300"></div><span className="flex-shrink-0 mx-4 text-gray-400 text-xs uppercase">ou</span><div className="flex-grow border-t border-gray-300"></div></div>
+            <Button variant="outline" className="w-full" onClick={handleDemo} type="button" disabled={loading}><PlayCircle size={18} /> Modo Demonstração</Button>
           </div>
         </form>
       </Card>
